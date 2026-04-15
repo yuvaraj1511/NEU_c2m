@@ -1,0 +1,282 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Address": {
+      "title": "Address",
+      "description": "User shipping address",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "street": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "zip": { "type": "string" },
+        "isDefault": { "type": "boolean" }
+      },
+      "required": ["userId", "name", "phone", "street", "city", "state", "zip"]
+    },
+    "ClanMember": {
+      "title": "Clan Member",
+      "description": "Special users who can post content (Clan X)",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "platform": { "type": "string", "enum": ["youtube", "instagram", "facebook"] },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "subscribers": { "type": "number" },
+            "views": { "type": "number" }
+          }
+        },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["userId", "platform", "status"]
+    },
+    "ClanPost": {
+      "title": "Clan Post",
+      "description": "Content posted by Clan X members",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "videoUrl", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "total": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "address": { "$ref": "Address" },
+        "sellerIds": { "type": "array", "items": { "type": "string" } },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "number" },
+              "size": { "type": "string" },
+              "color": { "type": "string" },
+              "sellerId": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["userId", "total", "status", "createdAt"]
+    },
+    "Seller": {
+      "title": "Seller Profile",
+      "description": "Information about a shop owner",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "shopName": { "type": "string" },
+        "shopDescription": { "type": "string" },
+        "shopLogo": { "type": "string" },
+        "companyType": { "type": "string", "enum": ["Individual", "LLP", "Pvt Ltd"] },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "gstNumber": { "type": "string" },
+        "panNumber": { "type": "string" },
+        "pickupAddress": {
+          "type": "object",
+          "properties": {
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "zip": { "type": "string" }
+          }
+        },
+        "bankDetails": {
+          "type": "object",
+          "properties": {
+            "accountNumber": { "type": "string" },
+            "ifscCode": { "type": "string" },
+            "cancelledChequeUrl": { "type": "string" }
+          }
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "rating": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "active", "suspended", "rejected"] },
+        "commissionRate": { "type": "number" },
+        "totalEarnings": { "type": "number" },
+        "pendingPayouts": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "shopName", "status"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A dress or clothing item for sale",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "mrp": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "type": { "type": "string" },
+        "sku": { "type": "string" },
+        "inventory": { "type": "number" },
+        "stock": { "type": "number" },
+        "sizes": { "type": "array", "items": { "type": "string" } },
+        "colors": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "hex": { "type": "string" }
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "size": { "type": "string" },
+              "color": { "type": "string" },
+              "stock": { "type": "number" },
+              "sku": { "type": "string" }
+            }
+          }
+        },
+        "fabric": { "type": "string" },
+        "fit": { "type": "string" },
+        "highlights": { "type": "array", "items": { "type": "string" } },
+        "occasion": { "type": "string" },
+        "washCare": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "videoUrl": { "type": "string" },
+        "c2m": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["live", "rejected", "pending"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sellerId", "name", "price", "category", "createdAt"]
+    },
+    "Review": {
+      "title": "Product Review",
+      "description": "Customer feedback for a product",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "userId", "rating", "createdAt"]
+    },
+    "ClanFollow": {
+      "title": "Clan Follow",
+      "description": "Follow relationship between users and clan leaders",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "leaderId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followerId", "leaderId"]
+    },
+    "PrivateMessage": {
+      "title": "Private Message",
+      "description": "Private message between user and clan leader",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["senderId", "receiverId", "text"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/addresses/{addressId}": {
+      "schema": "Address",
+      "description": "User saved addresses"
+    },
+    "/clan_members/{memberId}": {
+      "schema": "ClanMember",
+      "description": "Clan X members"
+    },
+    "/clan_posts/{postId}": {
+      "schema": "ClanPost",
+      "description": "Posts by Clan X members"
+    },
+    "/clan_follows/{followId}": {
+      "schema": "ClanFollow",
+      "description": "Followers of clan leaders"
+    },
+    "/private_messages/{messageId}": {
+      "schema": "PrivateMessage",
+      "description": "Private messages"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders"
+    },
+    "/sellers/{sellerId}": {
+      "schema": "Seller",
+      "description": "Seller profiles"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Products for sale"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Product reviews"
+    }
+  }
+}

@@ -1,0 +1,223 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - createdAt: timestamp
+    //
+    // Collection: orders
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required) - UID of the owner
+    //   - total: string (required)
+    //   - status: string (required, enum)
+    //   - createdAt: timestamp (required)
+    //   - items: list (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "yuvarajs.1511@gmail.com" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidOrder(data) {
+      return data.userId is string &&
+             data.total is string &&
+             data.status in ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] &&
+             data.createdAt is timestamp &&
+             data.items is list &&
+             data.sellerIds is list &&
+             (!('address' in data) || data.address is map);
+    }
+
+    function isSeller() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/sellers/$(request.auth.uid));
+    }
+
+    function isSellerApproved() {
+      return isAuthenticated() && get(/databases/$(database)/documents/sellers/$(request.auth.uid)).data.status == 'active';
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+
+      match /addresses/{addressId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+
+      match /following/{leaderId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+
+    match /clan_members/{memberId} {
+      // Everyone can see approved clan members
+      allow read: if resource.data.status == 'approved' || isOwner(resource.data.userId) || isAdmin();
+      
+      // Users can apply to be a clan member (status must be pending)
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.status == 'pending';
+      
+      // Only admins can update status
+      allow update: if isAdmin() || (isAuthenticated() && isOwner(resource.data.userId) && request.resource.data.status == resource.data.status);
+
+      // Admins can delete members
+      allow delete: if isAdmin();
+    }
+
+    match /clan_follows/{followId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.followerId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.followerId == request.auth.uid;
+    }
+
+    match /private_messages/{messageId} {
+      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin();
+    }
+
+    match /clan_posts/{postId} {
+      // Everyone can see clan posts
+      allow read: if true;
+      
+      // Only approved clan members or admins can post
+      allow create: if isAdmin() || (isAuthenticated() && 
+                    exists(/databases/$(database)/documents/clan_members/$(request.auth.uid)) &&
+                    get(/databases/$(database)/documents/clan_members/$(request.auth.uid)).data.status == 'approved');
+      
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /clan_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /sellers/{sellerId} {
+      // Everyone can see active sellers
+      allow read: if resource == null || resource.data.status == 'active' || isOwner(sellerId) || isAdmin();
+      
+      // Users can apply to be a seller
+      allow create: if isAuthenticated() && 
+                    sellerId == request.auth.uid &&
+                    request.resource.data.uid == request.auth.uid &&
+                    request.resource.data.status == 'pending';
+      
+      // Sellers can update their own profile (but not status unless admin)
+      allow update: if (isOwner(sellerId) && request.resource.data.status == resource.data.status) || isAdmin();
+
+      // Admins can delete sellers
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      // Everyone can see products
+      allow read: if true;
+      
+      // Only approved sellers can create products
+      allow create: if (isSellerApproved() && request.resource.data.sellerId == request.auth.uid) || isAdmin();
+      
+      // Sellers can update/delete their own products
+      allow update, delete: if (isAuthenticated() && resource.data.sellerId == request.auth.uid) || isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      // Everyone can see reviews
+      allow read: if true;
+      
+      // Authenticated users can create reviews
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid;
+      
+      // Only the author can update/delete
+      allow update, delete: if isAuthenticated() && 
+                            resource.data.userId == request.auth.uid;
+    }
+
+    match /orders/{orderId} {
+      // Users can see their own orders, or sellers can see orders where they are a seller
+      allow read: if isAuthenticated() && (
+                    resource == null || 
+                    resource.data.userId == request.auth.uid || 
+                    request.auth.uid in resource.data.sellerIds
+                  );
+      
+      // Users can create their own orders
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    isValidOrder(request.resource.data);
+      
+      // Users can cancel their own orders within 24 hours, or sellers can update status and shipping info
+      allow update: if isAuthenticated() && (
+                    (resource.data.userId == request.auth.uid &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                     request.resource.data.status == 'cancelled' &&
+                     request.time < resource.data.createdAt + duration.value(24, 'h')) ||
+                    (request.auth.uid in resource.data.sellerIds &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'awb', 'courier', 'shippedAt', 'trackingUrl', 'deliveredAt']))
+                  );
+                    
+      allow delete: if false;
+    }
+
+    match /product_chats/{productId}/messages/{messageId} {
+      // Everyone can read chat messages
+      allow read: if true;
+      
+      // Authenticated users can create messages
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.text is string &&
+                    request.resource.data.text.size() > 0 &&
+                    request.resource.data.text.size() <= 500;
+                    
+      allow update, delete: if false;
+    }
+    match /banners/{bannerId} {
+      // Everyone can read banners
+      allow read: if true;
+      
+      // Only admins can create, update, or delete banners
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
