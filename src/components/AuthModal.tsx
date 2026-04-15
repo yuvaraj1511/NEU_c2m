@@ -22,6 +22,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: { 
   if (!isOpen) return null;
 
   const getErrorMessage = (code: string) => {
+    console.log('Firebase Auth Error Code:', code);
     switch (code) {
       case 'auth/invalid-email': return 'Invalid email address.';
       case 'auth/user-not-found': return 'User not found.';
@@ -29,16 +30,28 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: { 
       case 'auth/email-already-in-use': return 'Email already in use.';
       case 'auth/weak-password': return 'Password should be at least 6 characters.';
       case 'auth/network-request-failed': return 'Network error. Please try again.';
-      default: return 'An error occurred. Please try again.';
+      case 'auth/popup-closed-by-user': return 'Login popup was closed before finishing.';
+      case 'auth/cancelled-popup-request': return 'Multiple login popups opened. Please try again.';
+      case 'auth/popup-blocked': return 'Login popup was blocked by your browser. Please allow popups or open in a new tab.';
+      case 'auth/operation-not-allowed': return 'Google login is not enabled in Firebase Console.';
+      case 'auth/unauthorized-domain': return 'This domain is not authorized for Google login. Please check Firebase Console.';
+      default: return `Error: ${code || 'An unknown error occurred'}. Please try again.`;
     }
   };
 
   const handleGoogleLogin = async () => {
+    setError('');
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      onClose();
+      // Add custom parameters to force account selection
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        onClose();
+      }
     } catch (err: any) {
+      console.error('Google Login Error:', err);
       setError(getErrorMessage(err.code));
     }
   };
@@ -138,6 +151,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: { 
             </div>
 
             <button
+              type="button"
               onClick={handleGoogleLogin}
               className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-zinc-200 transition-colors flex items-center justify-center gap-3"
             >
