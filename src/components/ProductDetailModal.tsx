@@ -167,13 +167,12 @@ export default function ProductDetailModal({ product, isOpen, onClose, onOrder }
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
           <motion.div 
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="bg-zinc-900 w-full max-w-md rounded-t-[2.5rem] overflow-hidden max-h-[90vh] flex flex-col border-t border-zinc-800"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-zinc-900 w-full max-w-md rounded-3xl overflow-hidden max-h-[90vh] flex flex-col border border-zinc-800 my-auto"
           >
             {/* Header */}
             <div className="p-6 flex justify-between items-center bg-zinc-900/80 backdrop-blur-md sticky top-0 z-10 border-b border-zinc-800">
